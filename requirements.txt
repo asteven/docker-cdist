@@ -1,0 +1,2 @@
+https://github.com/asteven/cdist/archive/production.tar.gz
+pexpect
