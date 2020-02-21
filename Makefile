@@ -26,7 +26,7 @@ build-runtime: build-cache
 		--tag $(IMG_FQNAME):$(IMG_VERSION) \
 		--tag $(IMG_FQNAME):latest .
 
-push: build-runtime
+push:
 	sudo docker push $(IMG_FQNAME):compile-stage
 	sudo docker push $(IMG_FQNAME):$(IMG_VERSION)
 	# Also update :latest
