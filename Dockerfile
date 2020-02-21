@@ -31,10 +31,13 @@ RUN useradd --create-home cdist
 WORKDIR /home/cdist
 USER cdist
 
+ADD --chown=cdist cdist.cfg /home/cdist/
+
 # Place to store the cdist and ssh configuration.
 RUN mkdir /home/cdist/.cdist
 RUN mkdir /home/cdist/.ssh && chmod 700 /home/cdist/.ssh
 
+VOLUME /tmp
 VOLUME /home/cdist/.cdist
 VOLUME /home/cdist/.ssh
 
