@@ -1,6 +1,6 @@
 # Dockerfile based on ideas from https://pythonspeed.com/
 
-FROM python:3.8-slim AS compile-image
+FROM docker.io/python:3.8-slim AS compile-image
 
 LABEL maintainer "Steven Armstrong <steven.armstrong@id.ethz.ch>"
 
@@ -19,7 +19,7 @@ RUN pip install -r requirements.txt
 RUN pip install dumb-init
 
 
-FROM python:3.8-slim AS runtime-image
+FROM docker.io/python:3.8-slim AS runtime-image
 
 # Install runtime dependencies.
 COPY install-packages.sh .
@@ -37,11 +37,11 @@ ADD --chown=cdist cdist.cfg /home/cdist/
 RUN mkdir /home/cdist/.cdist
 RUN mkdir /home/cdist/.ssh && chmod 700 /home/cdist/.ssh
 
-VOLUME /tmp
-VOLUME /home/cdist/.cdist
-VOLUME /home/cdist/.ssh
+#VOLUME /tmp
+#VOLUME /home/cdist/.cdist
+#VOLUME /home/cdist/.ssh
 
 # Ensure exectutables from virtualenv are prefered.
-ENV PATH="/venv/bin:$PATH"
+ENV PATH "/venv/bin:${PATH}"
 ENTRYPOINT ["/venv/bin/dumb-init", "--"]
 CMD ["cdist"]
