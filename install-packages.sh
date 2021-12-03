@@ -13,8 +13,9 @@ apt-get -y upgrade
 
 # Install our dependencies without unnecessary recommended packages:
 apt-get -y install --no-install-recommends \
-   openssh-client git curl rsync openssl ca-certificates \
-   iproute2 iputils-ping gawk
+   openssh-client openssl ca-certificates \
+   git curl rsync cpio gawk \
+   iproute2 iputils-ping procps
 
 update-ca-certificates
 

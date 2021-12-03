@@ -1,0 +1,213 @@
+#!/bin/sh
+#
+# 2011-2021 Steven Armstrong (steven at armstrong.cc)
+#
+
+set -e
+
+error() {
+   echo "[ERROR] $@" >&2
+}
+
+die_usage() {
+   error "$@"
+   echo
+   usage
+   exit 1
+}
+
+usage() {
+   cat << EOS 1>&2
+Usage: ${0##*/} [OPTIONS] COMMAND CHROOT [SHELL_COMMANDS]
+(see -h for more information)
+EOS
+}
+
+help() {
+   usage 2>&1 | head -n -1 1>&2
+
+   cat << EOS 1>&2
+
+A tool to help working with chroot envrionments.
+
+Available COMMANDs are:
+
+   mount:
+      Mount virtual file systems (e.g. /proc, /sys) inside the given CHROOT.
+
+   unmount:
+      Unmount all mountpoints in the given CHROOT.
+
+   enter:
+      Start a bash shell inside the given CHROOT.
+
+   run:
+      Run the given SHELL_COMMANDS in the given CHROOT.
+      Commands can be passed either as positional arguments or can
+      be written to stdin.
+
+
+Options:
+   -h    show this help message
+   -x    run with 'set -x' set
+
+
+Examples:
+
+   ${0##*/} mount /path/to/chroot
+
+   ${0##*/} unmount /path/to/chroot
+
+   ${0##*/} enter /path/to/chroot
+
+   ${0##*/} run /path/to/chroot "echo Hello; echo World"
+
+   echo 'echo "Hello World"' | ${0##*/} run /path/to/chroot
+
+EOS
+}
+
+
+SETX=
+# Parse command line arguments
+while getopts "xh" options
+do
+   #echo "$flag" $OPTIND $OPTARG
+   case $options in
+      x) SETX=1;;
+      ?|h) help
+         exit 0
+      ;;
+      *) usage
+         exit 1
+      ;;
+   esac
+done
+# Strip arguments allready handled by getopts
+shift $((OPTIND-1))
+
+[ "$SETX" ] && set -x
+
+[ $# -ge 2 ] || die_usage "Expected at least two positional arguments: COMMAND CHROOT"
+
+cmd_name="${0##*/}"
+
+trap trap_exit EXIT
+trap_exit() {
+   #echo "trap EXIT"
+   [ -f "$db/exit_handler" ] && {
+      . "$db/exit_handler"
+   }
+   rm -rf "$db"
+}
+
+at_exit() {
+   echo "$@" >> "$db/exit_handler"
+}
+
+_mount() {
+   # Mount and remember what we mounted.
+   mount_point="$1"; shift
+   mountpoint -q "$mount_point" || {
+      # Probably should not create mount point directories ourself.
+      #[ -d "$mount_point" ] || {
+      #   mkdir "$mount_point"
+      #}
+      echo "$mount_point"
+      mount $@ "$mount_point"
+   }
+}
+
+chroot_mount() {
+   [ -s "$chroot/etc/resolv.conf" ] || {
+      cp /etc/resolv.conf "$chroot/etc/resolv.conf.chruut"
+      (cd "$chroot/etc/"; ln -s resolv.conf.chruut resolv.conf)
+   }
+   _mount $chroot/proc -t proc proc
+   _mount $chroot/sys -t sysfs sysfs
+   _mount $chroot/tmp -t tmpfs tmpfs
+   _mount $chroot/dev -t devtmpfs -o mode=0755,nosuid udev
+   _mount $chroot/dev/pts -t devpts -o mode=0620,gid=5,nosuid,noexec devpts
+}
+
+chroot_unmount() {
+   mounted_db="$1"
+   # Unmount what we mounted ourself.
+   tac "$mounted_db" | while read mount_point; do
+      mountpoint -q "$mount_point" && {
+         umount -l "$mount_point"
+      }
+   done
+
+   [ -f "$chroot/etc/resolv.conf" ] && {
+      ls -l "$chroot/etc/resolv.conf" | grep -q resolv.conf.chruut && {
+         rm "$chroot/etc/resolv.conf"
+         rm "$chroot/etc/resolv.conf.chruut"
+      }
+   }
+   rm -rf "$mounted_db"
+}
+
+with_chroot() {
+   chroot_mount > "$db/mounted"
+   at_exit chroot_unmount "$db/mounted"
+   # Run command
+   "$@"
+}
+
+
+command_mount() {
+   chroot_mount >/dev/null
+}
+
+
+command_unmount() {
+   mount | awk -v chroot="$chroot/" '$3 ~ chroot {print $3}' | sort -r > "$db/mounted"
+   chroot_unmount "$db/mounted"
+}
+
+
+command_enter() {
+   rcfile=$(mktemp "${chroot}/${cmd_name}-bashrc-${0##*/}.XXXXXXXXXX")
+   at_exit rm -rf "$rcfile"
+   export IN_CHROOT=1
+   cat > $rcfile << DONE
+[ -f ~/.bashrc ] && . ~/.bashrc
+export PS1="(chroot) \$PS1"
+DONE
+   relative_rcfile="${rcfile#$chroot}"
+   with_chroot chroot "$chroot" /bin/bash --rcfile "$relative_rcfile" -i
+}
+
+
+command_run() {
+   (
+      if [ -t 0 ]; then
+         echo "$@"
+      else
+         cat /dev/stdin
+      fi
+   ) | with_chroot chroot "$chroot" sh -s
+}
+
+
+is_function() {
+   [ "$1" ] && type "$1" | sed "s/$1//" | grep -qwi function
+}
+
+
+command="command_${1}"
+if is_function "command_${1}" 2>/dev/null; then
+   shift 1
+   chroot="$1"; shift
+   [ -d "$chroot" ] || {
+      die_usage "The given CHROOT is not a directory: $chroot"
+   }
+else
+   die_usage "Unknown command: $1"
+fi
+
+db="$(mktemp -d "/tmp/${cmd_name}-XXXXXXXX")"
+
+$command "$@"
+

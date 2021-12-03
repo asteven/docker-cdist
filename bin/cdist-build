@@ -1,0 +1,207 @@
+#!/bin/sh -e
+
+error() {
+   echo "[ERROR] $@" >&2
+}
+die() {
+   error "$@"
+   exit 1
+}
+info() {
+   echo "[INFO] $@" >&2
+}
+debug() {
+   if [ $DEBUG ]; then
+      echo "[DEBUG] $@" >&2
+   fi
+}
+
+
+usage() {
+   cat << EOS 1>&2
+Usage: ${0##*/} [OPTIONS] FORMAT STAGE OUTPUT [TARGET]
+(see -h for more information)
+EOS
+}
+
+
+help() {
+   usage 2>&1 | head -n -1 1>&2
+
+   cat << EOS 1>&2
+
+Build initramfs and stage tarballs using cdist.
+
+Unpacks the given STAGE into the /target folder and configures it using
+cdist with either the given TARGET or a manifest mounted at /manifest.
+You can use TARGET to match against a __target_host in your cdist initial
+manifest.
+The resulting /target folder is then stored in the desired FORMAT into the
+given OUTPUT file or directory.
+
+FORMAT can be one of:
+   stage: build a stage tarball and save it to OUTPUT
+   initramfs: build a initramfs and store it together with the kernel to
+      the OUTPUT folder
+   shell: drop to a shell after configuring the chroot at /target
+
+
+Options:
+    -h    show this help message
+    -d    run in debug mode
+    -q    run in quiet mode
+    -x    run with 'set -x' set
+
+
+Examples:
+
+   ${0##*/} stage /stages/input-stage-focal.tar.gz /output/output-stage.tar.gz
+
+   ${0##*/} stage /stages/input.tar.gz /output/output.tar.gz some-target-host
+
+   ${0##*/} initramfs /stages/input-stage-focal.tar.gz /output/preos-20.04/
+
+   ${0##*/} shell
+
+EOS
+# TODO: 20210306/asteven: cdist config does not run properly with this
+#    -n    run without mounting /dev and /sys and friends
+}
+
+die_usage() {
+   error "$@"
+   usage
+   exit 1
+}
+
+NOMOUNT=
+DEBUG=
+QUIET=
+SETX=
+# Parse command line arguments
+while getopts "ndqxh" options
+do
+   #echo "$flag" $OPTIND $OPTARG
+   case $options in
+      d) DEBUG=1;;
+      q) QUIET=1;;
+      n) NOMOUNT=1;;
+      x) SETX=1;;
+      ?|h) help
+         exit 0
+      ;;
+      *) usage
+         exit 1
+      ;;
+   esac
+done
+# Strip arguments allready handled by getopts
+shift $((OPTIND-1))
+
+[ "$SETX" ] && set -x
+
+format="$1"
+
+case "$format" in
+   shell)
+      # Validate arguments
+      [ $# -eq 2 ] || die_usage "Expected exactly two positional arguments: FORMAT STAGE"
+   ;;
+   *)
+      # Validate arguments
+      [ $# -ge 3 ] || die_usage "Expected at least three positional arguments: FORMAT STAGE OUTPUT"
+   ;;
+esac
+
+format="$1"
+stage="$2"
+output="$3"
+target="${4:-target}"
+
+debug "format: $format"
+debug "stage: $stage"
+debug "output: $output"
+debug "target: $target"
+
+case "$stage" in
+   /*)
+      stage="file://${stage}"
+   ;;
+esac
+
+[ $DEBUG ] && ls -al "$stage"
+
+info "Unpacking $stage to /target"
+curl -s "$stage" | tar -xzp -C /target
+
+[ $DEBUG ] && cat /manifest
+
+remote=/cdist/remote/chroot
+
+trap cleanup EXIT
+cleanup() {
+   [ $NOMOUNT ] || chruut unmount /target || true
+}
+
+rm -rf /target/etc/resolv.conf
+
+# Ensure there's no leftover output dir.
+rm -rf /tmp/cdist-out
+
+[ $NOMOUNT ] && {
+   # Need at least a working resolv.conf in the chroot.
+   cp /etc/resolv.conf /target/etc/resolv.conf
+} || {
+   chruut mount /target
+}
+
+set --
+[ $QUIET ] || set -- "$@" -v
+[ -r /manifest ] && set -- "$@" -i /manifest
+set -- "$@" "$target"
+
+# Tell any types that care that we are running against a chroot.
+export __cdist_chroot_config=yes
+
+cdist config \
+   --remote-exec="$remote/exec /target" \
+   --remote-copy="$remote/copy /target" \
+   "$@"
+
+[ $NOMOUNT ] && {
+   rm -rf /target/etc/resolv.conf
+} || {
+   chruut unmount /target
+}
+
+# Cleanup /target
+rm -rf /target/var/lib/cdist
+
+
+case "$format" in
+   initramfs)
+      info "Saving kernel and initramfs to $output"
+
+      mkdir -p "$output"
+
+      cd /target
+      cp -L boot/vmlinuz-* "$output/kernel"
+      # TODO: should not need /boot in initramfs. Delete it.
+      rm -rf boot
+      find . -print0 | cpio --null -o --format=newc | gzip -9 > "$output/initramfs"
+      #find . -print0 | grep -Z -v -E '^./boot' | cpio --null -o --format=newc | gzip -9 > /output/initramfs
+      chmod 644 "$output"/*
+   ;;
+   stage)
+      info "Saving stage tarball to $output"
+      cd /target && tar --numeric-owner -cpzf "$output" .
+      chmod 644 "$output"
+   ;;
+   shell)
+      /bin/bash
+   ;;
+   *)
+      die "Unknown FORMAT: $format"
+   ;;
+esac
+
