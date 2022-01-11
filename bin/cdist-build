@@ -47,10 +47,11 @@ FORMAT can be one of:
 
 
 Options:
-    -h    show this help message
-    -d    run in debug mode
-    -q    run in quiet mode
-    -x    run with 'set -x' set
+    -h      show this help message
+    -d      run in debug mode
+    -q      run in quiet mode
+    -x      run with 'set -x' set
+    -i str  use the given initial manifest instead of /manifest
 
 
 Examples:
@@ -78,8 +79,9 @@ NOMOUNT=
 DEBUG=
 QUIET=
 SETX=
+INITIAL_MANIFEST=/manifest
 # Parse command line arguments
-while getopts "ndqxh" options
+while getopts "i:ndqxh" options
 do
    #echo "$flag" $OPTIND $OPTARG
    case $options in
@@ -87,6 +89,7 @@ do
       q) QUIET=1;;
       n) NOMOUNT=1;;
       x) SETX=1;;
+      i) INITIAL_MANIFEST=$OPTARG;;
       ?|h) help
          exit 0
       ;;
@@ -134,7 +137,7 @@ esac
 info "Unpacking $stage to /target"
 curl -s "$stage" | tar -xzp -C /target
 
-[ $DEBUG ] && cat /manifest
+[ $DEBUG ] && cat "$INITIAL_MANIFEST"
 
 remote=/cdist/remote/chroot
 
@@ -157,7 +160,7 @@ rm -rf /tmp/cdist-out
 
 set --
 [ $QUIET ] || set -- "$@" -v
-[ -r /manifest ] && set -- "$@" -i /manifest
+[ -r "$INITIAL_MANIFEST" ] && set -- "$@" -i "$INITIAL_MANIFEST"
 set -- "$@" "$target"
 
 # Tell any types that care that we are running against a chroot.

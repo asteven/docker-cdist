@@ -41,14 +41,6 @@ RUN mkdir /target
 RUN mkdir /cdist
 RUN mkdir /cdist/config
 
-COPY remote /cdist/remote
-COPY bin/ /usr/local/bin/
-
-ADD entrypoint.sh /entrypoint
-
-ADD cdist.cfg /etc/cdist.cfg
-ENV CDIST_CONFIG_FILE=/etc/cdist.cfg
-
 RUN useradd --home-dir /home/cdist --create-home --uid 1000 cdist
 WORKDIR /home/cdist
 
@@ -57,9 +49,13 @@ RUN mkdir /home/cdist/.cdist
 RUN mkdir /home/cdist/.ssh && chmod 700 /home/cdist/.ssh
 RUN chown -R cdist: /home/cdist
 
-#VOLUME /tmp
-#VOLUME /home/cdist/.cdist
-#VOLUME /home/cdist/.ssh
+ADD cdist.cfg /etc/cdist.cfg
+ENV CDIST_CONFIG_FILE=/etc/cdist.cfg
+
+COPY remote /cdist/remote
+COPY bin/ /usr/local/bin/
+
+ADD entrypoint.sh /entrypoint
 
 # Ensure exectutables from virtualenv are prefered.
 ENV PATH "/venv/bin:${PATH}"
