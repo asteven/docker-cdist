@@ -188,7 +188,7 @@ case "$format" in
    custom)
       info "Running custom code: $code"
       # Run the given code in the context of this shell
-      $code
+      /bin/sh -ec "$code"
    ;;
    initramfs)
       info "Saving kernel and initramfs to $output"
