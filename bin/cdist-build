@@ -107,35 +107,27 @@ shift $((OPTIND-1))
 [ "$SETX" ] && set -x
 
 format="$1"
+stage="$2"
 
 case "$format" in
    shell)
       # Validate arguments
       [ $# -eq 2 ] || die_usage "Expected exactly two positional arguments: FORMAT STAGE"
-      stage="$2"
    ;;
    custom)
       # Validate arguments
-      [ $# -eq 4 ] || die_usage "Expected exactly four positional arguments: FORMAT STAGE OUTPUT CODE"
-      stage="$2"
-      output="$3"
+      [ $# -ge 3 ] || die_usage "Expected at least three positional arguments: FORMAT STAGE CODE"
       target=target
-      shift 3
+      shift 2
       code="$@"
    ;;
    *)
       # Validate arguments
       [ $# -ge 3 ] || die_usage "Expected at least three positional arguments: FORMAT STAGE OUTPUT"
-      stage="$2"
       output="$3"
       target="${4:-target}"
    ;;
 esac
-
-debug "format: $format"
-debug "stage: $stage"
-debug "output: $output"
-debug "target: $target"
 
 case "$stage" in
    /*)
@@ -194,7 +186,6 @@ rm -rf /target/var/lib/cdist
 
 case "$format" in
    custom)
-      mkdir -p "$output"
       info "Running custom code: $code"
       # Run the given code in the context of this shell
       $code
