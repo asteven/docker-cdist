@@ -120,6 +120,8 @@ case "$format" in
       stage="$2"
       output="$3"
       target=target
+      shift 3
+      code="$@"
    ;;
    *)
       # Validate arguments
@@ -193,8 +195,6 @@ rm -rf /target/var/lib/cdist
 case "$format" in
    custom)
       mkdir -p "$output"
-      shift 3
-      code="$@"
       info "Running custom code: $code"
       # Run the given code in the context of this shell
       $code
