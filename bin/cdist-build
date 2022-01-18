@@ -112,21 +112,23 @@ case "$format" in
    shell)
       # Validate arguments
       [ $# -eq 2 ] || die_usage "Expected exactly two positional arguments: FORMAT STAGE"
+      stage="$2"
    ;;
    custom)
       # Validate arguments
       [ $# -eq 4 ] || die_usage "Expected exactly four positional arguments: FORMAT STAGE OUTPUT CODE"
+      stage="$2"
+      output="$3"
+      target=target
    ;;
    *)
       # Validate arguments
       [ $# -ge 3 ] || die_usage "Expected at least three positional arguments: FORMAT STAGE OUTPUT"
+      stage="$2"
+      output="$3"
+      target="${4:-target}"
    ;;
 esac
-
-format="$1"
-stage="$2"
-output="$3"
-target="${4:-target}"
 
 debug "format: $format"
 debug "stage: $stage"
