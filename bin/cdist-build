@@ -19,7 +19,7 @@ debug() {
 
 usage() {
    cat << EOS 1>&2
-Usage: ${0##*/} [OPTIONS] FORMAT STAGE OUTPUT [TARGET]
+Usage: ${0##*/} [OPTIONS] FORMAT STAGE OUTPUT [TARGET|CODE]
 (see -h for more information)
 EOS
 }
@@ -43,6 +43,7 @@ FORMAT can be one of:
    stage: build a stage tarball and save it to OUTPUT
    initramfs: build a initramfs and store it together with the kernel to
       the OUTPUT folder
+   custom: run cdist config against /target and then run the given CODE
    shell: drop to a shell after configuring the chroot at /target
 
 
@@ -61,6 +62,8 @@ Examples:
    ${0##*/} stage /stages/input.tar.gz /output/output.tar.gz some-target-host
 
    ${0##*/} initramfs /stages/input-stage-focal.tar.gz /output/preos-20.04/
+
+   ${0##*/} custom /stages/input-stage-focal.tar.gz /output/chaos-20.04/ "cp -L /target/vmlinuz /output/chaos-20.04/kernel; cp -L /target/initrd.img /output/chaos-20.04/initramfs"
 
    ${0##*/} shell
 
@@ -109,6 +112,10 @@ case "$format" in
    shell)
       # Validate arguments
       [ $# -eq 2 ] || die_usage "Expected exactly two positional arguments: FORMAT STAGE"
+   ;;
+   custom)
+      # Validate arguments
+      [ $# -eq 4 ] || die_usage "Expected exactly four positional arguments: FORMAT STAGE OUTPUT CODE"
    ;;
    *)
       # Validate arguments
@@ -182,6 +189,14 @@ rm -rf /target/var/lib/cdist
 
 
 case "$format" in
+   custom)
+      mkdir -p "$output"
+      shift 3
+      code="$@"
+      info "Running custom code: $code"
+      # Run the given code in the context of this shell
+      $code
+   ;;
    initramfs)
       info "Saving kernel and initramfs to $output"
 
