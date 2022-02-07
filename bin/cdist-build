@@ -135,12 +135,17 @@ case "$stage" in
    ;;
 esac
 
-[ $DEBUG ] && ls -al "$stage"
+[ $DEBUG ] && {
+   # in debug mode, do not exit on error
+   set +e
+
+   ls -al "$stage"
+   cat "$INITIAL_MANIFEST"
+}
+
 
 info "Unpacking $stage to /target"
 curl -s "$stage" | tar -xzp -C /target
-
-[ $DEBUG ] && cat "$INITIAL_MANIFEST"
 
 remote=/cdist/remote/chroot
 
