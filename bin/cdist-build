@@ -197,8 +197,9 @@ case "$format" in
 
       cd /target
       cp -L boot/vmlinuz-* "$output/kernel"
-      # TODO: should not need /boot in initramfs. Delete it.
-      rm -rf boot
+      # Should not need /boot in initramfs. Delete it.
+      # 20220207: decided to keep the kernel, allows for kexec'ing into it when debugging stuff.
+      #rm -rf boot
       find . -print0 | cpio --null -o --format=newc | gzip -9 > "$output/initramfs"
       #find . -print0 | grep -Z -v -E '^./boot' | cpio --null -o --format=newc | gzip -9 > /output/initramfs
       chmod 644 "$output"/*
