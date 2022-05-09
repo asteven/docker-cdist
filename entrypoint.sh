@@ -28,7 +28,12 @@ case "$command" in
    git-clone-config)
       shift 1
       source_repo="$1"
-      exec git clone "$source_repo" /cdist/config
+      source_branch="$2"
+      set --
+      if [ -n "$source_branch" ]; then
+         set -- $@ --branch "$source_branch"
+      fi
+      exec git clone --single-branch $@ "$source_repo" /cdist/config
    ;;
    config|install)
       shift 1
