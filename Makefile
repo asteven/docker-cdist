@@ -2,7 +2,7 @@ REGISTRY = docker.io
 IMG_NAMESPACE = asteven
 IMG_NAME = cdist
 IMG_FQNAME = $(REGISTRY)/$(IMG_NAMESPACE)/$(IMG_NAME)
-IMG_VERSION = 0.2.13
+IMG_VERSION = 0.2.16
 # Prefere podman over docker for building.
 BUILDER = $(shell which podman || which docker)
 
