@@ -1,0 +1,14 @@
+#!/bin/sh
+
+source="$1"
+output="$2"
+
+info() {
+   echo "[INFO] $@" >&2
+}
+
+info "Saving content of $source as stage tarball to $output"
+
+cd "$source" && tar --one-file-system --numeric-owner -cpzf "$output" .
+chmod 644 "$output"
+

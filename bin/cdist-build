@@ -189,43 +189,17 @@ cdist config \
 rm -rf /target/var/lib/cdist
 
 
-create_initramfs() {
-   _output="$1"
-   info "Saving kernel and initramfs to $_output"
-
-   mkdir -p "$_output"
-
-   cd /target
-   cp -L boot/vmlinuz-* "$_output/kernel"
-   # Should not need /boot in initramfs. Delete it.
-   # 20220207: decided to keep the kernel, allows for kexec'ing into it when debugging stuff.
-   #rm -rf boot
-   find . -print0 | cpio --null -o --format=newc | gzip -9 > "$_output/initramfs"
-   #find . -print0 | grep -Z -v -E '^./boot' | cpio --null -o --format=newc | gzip -9 > /output/initramfs
-   chmod 644 "$_output"/*
-}
-
-create_stage() {
-   _output="$1"
-   info "Saving stage tarball to $_output"
-   cd /target && tar --numeric-owner -cpzf "$_output" .
-   chmod 644 "$_output"
-}
-
 case "$format" in
    custom)
       info "Running custom code: $code"
       # Run the given code in the context of this shell
-      #/bin/sh -ec "$code"
-      echo "code: $code"
-      echo "-----"
-      "$code"
+      /bin/sh -ec "$code"
    ;;
    initramfs)
-      create_initramfs "$output"
+      create-initramfs /target "$output"
    ;;
    stage)
-      create_stage "$output"
+      create-stage /target "$output"
    ;;
    shell)
       /bin/bash

@@ -1,0 +1,22 @@
+#!/bin/sh
+
+source="$1"
+output="$2"
+
+info() {
+   echo "[INFO] $@" >&2
+}
+
+info "Saving content of $source as initramfs and kernel to $output"
+
+mkdir -p "$output"
+
+cd "$source"
+cp -L boot/vmlinuz-* "$output/kernel"
+# Should not need /boot in initramfs. Delete it.
+# 20220207: decided to keep the kernel, allows for kexec'ing into it when debugging stuff.
+#rm -rf boot
+find . -xdev -print0 | cpio --null -o --format=newc | gzip -9 > "$output/initramfs"
+#find . -print0 | grep -Z -v -E '^./boot' | cpio --null -o --format=newc | gzip -9 > /output/initramfs
+chmod 644 "$output"/*
+
