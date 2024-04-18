@@ -37,7 +37,7 @@ RUN ./install-packages.sh
 
 COPY --from=compile-image /venv /venv
 
-RUN mkdir /target
+RUN mkdir /target; chmod 0755 /target
 RUN mkdir /cdist
 RUN mkdir /cdist/config
 

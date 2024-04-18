@@ -11,6 +11,9 @@ info "Saving content of $source as initramfs and kernel to $output"
 
 mkdir -p "$output"
 
+# Ensure usable permissions on source directory.
+chmod 0755 "$source"
+
 cd "$source"
 cp -L boot/vmlinuz-* "$output/kernel"
 # Should not need /boot in initramfs. Delete it.
