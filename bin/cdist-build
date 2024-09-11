@@ -113,6 +113,7 @@ case "$format" in
    shell)
       # Validate arguments
       [ $# -eq 2 ] || die_usage "Expected exactly two positional arguments: FORMAT STAGE"
+      target=target
    ;;
    custom)
       # Validate arguments
