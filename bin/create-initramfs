@@ -1,5 +1,17 @@
 #!/bin/sh
 
+FIRMWARE=0
+# Parse command line arguments
+while getopts "f" options
+do
+   #echo "$flag" $OPTIND $OPTARG
+   case $options in
+      f) FIRMWARE=1;;
+   esac
+done
+# Strip arguments allready handled by getopts
+shift $((OPTIND-1))
+
 source="$1"
 output="$2"
 
@@ -15,11 +27,25 @@ mkdir -p "$output"
 chmod 0755 "$source"
 
 cd "$source"
+
+# Copy kernel to output directory.
 cp -L boot/vmlinuz-* "$output/kernel"
-# Should not need /boot in initramfs. Delete it.
-# 20220207: decided to keep the kernel, allows for kexec'ing into it when debugging stuff.
-#rm -rf boot
-find . -xdev -print0 | cpio --null -o --format=newc | gzip -9 > "$output/initramfs"
-#find . -print0 | grep -Z -v -E '^./boot' | cpio --null -o --format=newc | gzip -9 > /output/initramfs
+
+# Remove normal initrd's - they are large yet have no value for us.
+rm ./boot/initrd.img*
+
+# Optionally split /usr/lib/firmware into a separate cpio archive.
+if [ $FIRMWARE -eq 1 ]; then
+   find . -xdev -path './usr/lib/firmware*' -print0 \
+      | cpio --null -o --format=newc \
+      | zstd -T4 -9 > "$output/firmware"
+   rm -rf ./usr/lib/firmware/*
+fi
+
+# Build our custom initramfs.
+find . -xdev -print0 \
+   | cpio --null -o --format=newc \
+   | zstd -T4 -9 > "$output/initramfs"
+
 chmod 644 "$output"/*
 
