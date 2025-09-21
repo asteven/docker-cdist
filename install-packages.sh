@@ -15,7 +15,7 @@ apt-get -y upgrade
 apt-get -y install --no-install-recommends \
    openssh-client openssl ca-certificates \
    git curl rsync cpio gawk unzip \
-   iproute2 iputils-ping procps
+   iproute2 iputils-ping procps zstd
 
 update-ca-certificates
 
