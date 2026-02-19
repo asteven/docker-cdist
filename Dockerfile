@@ -1,6 +1,6 @@
 # Dockerfile based on ideas from https://pythonspeed.com/
 
-FROM docker.io/python:3.8-slim AS compile-image
+FROM docker.io/python:3.13-slim AS compile-image
 
 LABEL maintainer "Steven Armstrong <steven@armstrong.cc>"
 
@@ -29,7 +29,7 @@ RUN pip install -r requirements.txt
 RUN pip install dumb-init
 
 
-FROM docker.io/python:3.8-slim AS runtime-image
+FROM docker.io/python:3.13-slim AS runtime-image
 
 # Install runtime dependencies.
 COPY install-packages.sh .
