@@ -109,16 +109,19 @@ shift $((OPTIND-1))
 format="$1"
 stage="$2"
 
+# Allow custom target to be set via environment variable
+: ${CDIST_TARGET:=target}
+
 case "$format" in
    shell)
       # Validate arguments
       [ $# -eq 2 ] || die_usage "Expected exactly two positional arguments: FORMAT STAGE"
-      target=target
+      target="$CDIST_TARGET"
    ;;
    custom)
       # Validate arguments
       [ $# -ge 3 ] || die_usage "Expected at least three positional arguments: FORMAT STAGE CODE"
-      target=target
+      target="$CDIST_TARGET"
       shift 2
       code="$@"
    ;;
@@ -126,7 +129,7 @@ case "$format" in
       # Validate arguments
       [ $# -ge 3 ] || die_usage "Expected at least three positional arguments: FORMAT STAGE OUTPUT"
       output="$3"
-      target="${4:-target}"
+      target="${4:-$CDIST_TARGET}"
    ;;
 esac
 
